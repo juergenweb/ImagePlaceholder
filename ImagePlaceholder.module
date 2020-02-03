@@ -1,0 +1,465 @@
+<?php namespace ProcessWire;
+
+class ImagePlaceholder extends WireData implements Module, ConfigurableModule
+{
+    public static function getModuleInfo()
+    {
+        return [
+      'title' => 'Image Placeholder',
+      'summary' => 'A configurable module for creating placeholder images.',
+      'author' => 'Jürgen Kern',
+      'autoload' => false,
+      'singular' => true,
+      'requires' => 'ProcessWire>=3.0.0, PHP>=7.0.0',
+      'icon' => 'image',
+      'version' => 1
+    ];
+    }
+
+
+
+    // __construct
+    public function __construct()
+    {
+        parent::__construct();
+        $this->width = 150;
+        $this->height = null;
+        $this->font_size = 14;
+        $this->background_color = null;
+        $this->text_color = '#666666';
+        $this->font_family = 'pacifico';
+        $this->text = null;
+    }
+
+    /*
+    Custom validation for input fields
+    */
+
+    public function init() {
+       $this->addHookAfter("Inputfield::processInput",$this,"validateField");
+     }
+
+   public function validateField(HookEvent $event){
+       $inputfield = $event->object;
+       $name = $inputfield->name;
+       if(($name == 'background_color') || ($name == 'text_color')) {
+           if(!$this->validateHexadecimal($inputfield->attr("value"))){
+               $inputfield->error($this->_("Only heaxadecimal values are allowed"));
+           }
+       }
+   }
+
+   private function validateHexadecimal(string $hexadecimal = null)
+   {
+     if($hexadecimal){
+       $pattern = '/#([[:xdigit:]]{3}){1,2}\b/';
+       if(preg_match($pattern, $hexadecimal, $matches)){
+         return true;
+       } else {
+         return false;
+       }
+     }
+     return true;
+   }
+
+
+    /**
+      * Helper method for sanitizing hexadecimal colors
+      *
+      * @param string|null $hexcolor
+      * @return string|null
+      */
+
+    private function sanitizeHex(string $hexcolor = null)
+    {
+        if ($hexcolor) {
+            $color = trim($hexcolor);
+            $color = preg_replace('/[^a-zA-Z0-9#]/', '', $color); //only allow letters, numbers and #
+            //check for short notation of hex code
+            $prefix = (substr($color, 0, 1) !== '#') ? '#' : '';
+            $color = substr($prefix.$color, 0, 7);
+            if (strlen($color) < 7) {
+                //get the last letter in string and repeat it until string consists of
+                $number = strlen($color);
+                $lastLetter = substr($color, -1);
+                $color = str_pad($color, 7, $lastLetter);
+            }
+            return $color;
+        }
+    }
+
+    // Set and get width
+
+    /**
+      * Set the width of the placeholder image
+      *
+      * @param string width  (fe 400); required value
+      * @return string|null
+      */
+
+    public function setWidth(int $width): self
+    {
+        if ($width > 0) {
+            $this->width = $width;
+        }
+        return $this;
+    }
+
+    /**
+     * Get the width of the placeholder image
+     *
+     * @return string|null
+     */
+
+    public function getWidth()
+    {
+        return $this->width;
+    }
+
+    /**
+     * Set the Height of the placeholder image
+     *
+     * @param string|null height  (fe 300)
+     * @return string|null
+     */
+    public function setHeight(int $height = null): self
+    {
+        if ($height > 0) {
+            $this->height = $height;
+        }
+        return $this;
+    }
+
+    /**
+     * Get the height of the placeholder image
+     *
+     * @return string|null
+     */
+    public function getHeight()
+    {
+        return $this->height;
+    }
+
+    // Set and get background color
+    public function setBackgroundColor(string $backgroundColor = null): self
+    {
+        if ($backgroundColor) {
+            $this->background_color = $this->sanitizeHex($backgroundColor);
+        }
+        return $this;
+    }
+
+    public function getBackgroundColor()
+    {
+        return $this->background_color;
+    }
+
+    // Set and get text color
+    public function setTextColor(string $textColor = null): self
+    {
+        if ($textColor) {
+            $this->text_color = $this->sanitizeHex($textColor);
+        }
+        return $this;
+    }
+
+    public function getTextColor()
+    {
+        return $this->text_color;
+    }
+
+    // Set and get text
+    public function setText(string $text = null): self
+    {
+        if ($text) {
+            $this->text = trim($text);
+        }
+        return $this;
+    }
+
+    public function getText()
+    {
+        return $this->text;
+    }
+
+    public function getDefaultText()
+    {
+        //default
+        $data = $this->wire('modules')->getConfig($this);
+        if ($this->wire('languages')) {
+            $userLanguage = $this->wire('user')->language;
+            $lang = $userLanguage->isDefault() ? '' : "__$userLanguage->id";
+        } else {
+            $lang = '';
+        }
+        if (isset($data['default_text'.$lang])) {
+            return ($data['default_text'.$lang]);
+        }
+    }
+
+    // Set and get fontsize
+    public function setFontSize(int $fontsize = null): self
+    {
+        if ($fontsize > 0) {
+            $this->font_size = $fontsize;
+        }
+        return $this;
+    }
+
+    public function getFontSize()
+    {
+        return $this->font_size;
+    }
+
+    // Set and get font family
+    public function setFontFamily(string $fontfamily = null): self
+    {
+        if ($fontfamily) {
+            $fontfamily = trim($fontfamily);
+            //only allow file names which are in the 'fonts' or 'custom_fonts' directory
+            if (in_array($fontfamily, $this->getAllFontFiles())) {
+                $this->font_family = $fontfamily;
+            }
+        }
+        return $this;
+    }
+
+    public function getFontFamily()
+    {
+        return $this->font_family;
+    }
+
+
+    private function checkFileExt(string $pathToFile = null)
+    {
+        $ext = pathinfo($pathToFile, PATHINFO_EXTENSION);
+        if (($ext === 'ttf') || ($ext === 'TTF')) {
+            return true;
+        }
+        return false;
+    }
+
+    private function getAllFontFilesInDir(string $pathToDir = null): array
+    {
+        $fontFiles = [];
+        if ($pathToDir) {
+            $files = scandir($pathToDir);
+            $files = array_slice($files, 2);
+            if ($files) {
+                foreach ($files as $file) {
+                    if ((is_file($pathToDir.$file)) && ($this->checkFileExt($file))) {
+                        $fontFiles[] = pathinfo($file, PATHINFO_FILENAME); // file name without extension
+                    }
+                }
+            }
+            return $fontFiles;
+        }
+    }
+
+    public function getAllFontFiles(): array
+    {
+        $defaultFontFiles = $this->getAllFontFilesInDir(dirname(__FILE__) . DIRECTORY_SEPARATOR.'fonts'.DIRECTORY_SEPARATOR);
+        $customFontFiles = $this->getAllFontFilesInDir(dirname(__FILE__) . DIRECTORY_SEPARATOR.'custom_fonts'.DIRECTORY_SEPARATOR);
+        return array_merge($defaultFontFiles, $customFontFiles);
+    }
+
+    private function createFontFamilySelect()
+    {
+        $selectOptions = [];
+        foreach ($this->getAllFontFiles() as $v) {
+            $selectOptions[$v] = ucwords($v);
+        }
+        return $selectOptions;
+    }
+
+
+    public function render(bool $tag = false)
+    {
+
+        if (empty($this->getHeight())) {
+            $this->setHeight($this->getWidth());
+        } // make squared image
+
+        $image = imagecreatetruecolor($this->getWidth(), $this->getHeight());
+        // Set the background color of image
+        if ($this->getBackgroundColor()) {
+            list($r, $g, $b) = sscanf($this->getBackgroundColor(), '#%02x%02x%02x');
+            $background_color = imagecolorallocate($image, $r, $g, $b);
+            // Fill background with above selected color
+            imagefilledrectangle($image, 0, 0, $this->getWidth(), $this->getHeight(), $background_color);
+        } else {
+            // Transparent Background
+            imagealphablending($image, false);
+            $transparency = imagecolorallocatealpha($image, 0, 0, 0, 127);
+            imagefill($image, 0, 0, $transparency);
+            imagesavealpha($image, true);
+        }
+        // Set the text color of image
+        list($r, $g, $b) = sscanf($this->getTextColor(), '#%02x%02x%02x');
+        $text_color = imagecolorallocate($image, $r, $g, $b);
+
+        //get Folder of font file
+        if (file_exists(dirname(__FILE__) . DIRECTORY_SEPARATOR.'fonts'.DIRECTORY_SEPARATOR.$this->getFontFamily().'.ttf')) {
+            $dir = 'fonts';
+        } else {
+            $dir = 'custom_fonts';
+        }
+
+
+        $fontFile = dirname(__FILE__) . DIRECTORY_SEPARATOR.$dir.DIRECTORY_SEPARATOR.$this->getFontFamily().'.ttf';
+        if (file_exists($fontFile)) {
+            if (($this->getText()) || ($this->getDefaultText())) {
+
+            //set custom text or fallback to default text if present
+                $text = ($this->getText()) ? $this->getText() : $this->getDefaultText();
+                //$fontSize = ($this->getFontSize()) ? $this->getFontSize() : $this->getDefaultFontSize();
+
+                //$fontsize = ($this->getFontSize()) ? $this->getFontSize() : $this->getDefaultSize();
+
+                // get the the coordinates for width and height of the text in pixel
+                $coordinates = imagettfbbox($this->getFontSize(), 0, $fontFile, $text);
+
+                // Center text horizontally
+                $center = ceil($this->getWidth() / 2);
+                $x = $center - (ceil($coordinates[4]/2));
+
+                // Center text vertically
+                $center = ceil($this->getHeight() / 2);
+                $y = $center  - (ceil($coordinates[7]/2));
+
+                // Draw text string
+                imagettftext($image, $this->getFontSize(), 0, $x, $y, $text_color, $fontFile, $text);
+            }
+        }
+
+        ob_start();
+        imagepng($image);
+        $contents = ob_get_contents();
+        ob_end_clean();
+
+        imagedestroy($image);
+
+        $html = 'data:image/png;base64,'.base64_encode($contents);
+        if ($tag) {
+            $html = '<img src="'.$html.'" width="'.$this->getWidth().'px" height="'.$this->getHeight().'px" alt="'.$this->getText().'" title="'.$this->getText().'" />';
+        }
+        return $html;
+    }
+
+
+    private static function staticRender($width = null, $height = null, $background_color = null, $text_color = null, $fontfamily = null, $fontsize = null, $text = null, $tag = true)
+    {
+        $imagetag = new self($tag);
+        return $imagetag->setWidth($width)
+              ->setHeight($height)
+              ->setBackgroundColor($background_color)
+              ->setTextColor($text_color)
+              ->setFontFamily($fontfamily)
+              ->setFontSize($fontsize)
+              ->setText($text)
+              ->render();
+    }
+
+    public static function srcAttribute($width = null, $height = null, $background_color = null, $text_color = null, $fontfamily = null, $fontsize = null, $text = null)
+    {
+        return self::staticRender($width, $height, $background_color, $text_color, $fontfamily, $fontsize, $text, $tag = false);
+    }
+
+    //echo \Placeholder\Placeholder::imagetag(300, 300, null, null, null, null, 'Placeholder');
+    public static function imageTag($width = null, $height = null, $background_color = null, $text_color = null, $fontfamily = null, $fontsize = null, $text = null)
+    {
+        return self::staticRender($width, $height, $background_color, $text_color, $fontfamily, $fontsize, $text, $tag = true);
+    }
+
+
+    public function ___install()
+    {
+        if (extension_loaded('gd') && function_exists('gd_info')) {
+            // all fine
+        } else {
+            throw new WireException("PHP GD library is NOT installed on your web server");
+        }
+    }
+
+    /**
+     * Config inputfields
+     *
+     * @param InputfieldWrapper $inputfields
+     */
+    public function getModuleConfigInputfields($inputfields)
+    {
+        $modules = $this->wire('modules');
+
+        //add script
+        //$this->wire('config')->scripts->add($this->wire('config')->urls->ImagePlaceholder . 'placeholder.js');
+
+        /* @var InputfieldText $f */
+        $f = $modules->InputfieldText;
+        $f_name = 'default_text';
+        $f->name = $f_name;
+        $f->label = $this->_('Default placeholder text');
+        $f->description = $this->_('Enter a default text for the placeholder image (fe Sorry, no pic). Leaving this field blank means a placeholder image without any text information.');
+        $f->value = $this->$f_name;
+        $f->useLanguages = true;
+        $f->collapsed = Inputfield::collapsedBlank;
+        $inputfields->add($f);
+
+        /* @var InputfieldText $f */
+        $f = $modules->InputfieldText;
+        $f_name = 'background_color';
+        $f->name = $f_name;
+        $f->label = $this->_('Default background color');
+        $f->description = $this->_('Enter a default color for the image background in hexadecimal code (fe #dddddd). Leaving this field blank means a transparent background.');
+        $f->value = $this->$f_name;
+        $f->collapsed = Inputfield::collapsedBlank;
+        $inputfields->add($f);
+
+        /* @var InputfieldText $f */
+        $f = $modules->InputfieldText;
+        $f_name = 'text_color';
+        $f->name = $f_name;
+        $f->label = $this->_('Default text color');
+        $f->description = $this->_('Enter a default color for the text in hexadecimal code (fe #666666)');
+        $f->value = $this->$f_name;
+        $f->required = true;
+        $inputfields->add($f);
+
+        /* @var InputfieldSelect $f */
+        $f = $modules->InputfieldSelect;
+        $f_name = 'font_family';
+        $f->name = $f_name;
+        $f->id = $f_name;
+        $f->label = $this->_('Default font family');
+        $f->value = $this->$f_name;
+        $f->description = $this->_('Please select the default font.');
+        $f->options = $this->createFontFamilySelect();
+        $f->required = true;
+        $inputfields->add($f);
+
+        /* @var InputfieldInteger $f */
+        $f = $modules->InputfieldInteger;
+        $f_name = 'font_size';
+        $f->name = $f_name;
+        $f->label = $this->_('Default font size');
+        $f->value = $this->$f_name;
+        $f->inputType = 'number';
+        $f->min = 1;
+        $f->required = true;
+        $inputfields->add($f);
+
+        /** @var InputfieldFile﻿ ﻿$f */
+        $f = $modules->InputfieldFile;
+        $f_name = 'font_upload';
+        $f->label = $this->_('Upload new font file');
+        $f->description = $this->_('Only true type font files are allowed');
+        $f->name = $f_name;
+        $f->icon = 'folder-plus';
+        $f->extensions = 'ttf, TTF';
+        $f->maxFiles = 1;
+        $f->descriptionRows = 0;
+        $f->destinationPath = $this->wire('config')->paths->$this . 'custom_fonts/';
+        $inputfields->add($f);
+
+        return $inputfields;
+    }
+}
