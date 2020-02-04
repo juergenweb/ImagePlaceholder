@@ -19,7 +19,7 @@ Additional font files in true type format (ttf) can be uploaded via an upload fi
 - setFontSize(int)
 - setText(string)
 
-Use this methods to overwrite default values from the module configuration.
+Use these methods to overwrite default values from the module configuration.
 
 ## Examples for usage in templates
 
