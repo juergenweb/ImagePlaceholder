@@ -60,7 +60,7 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
                     $file = dirname(__FILE__) . DIRECTORY_SEPARATOR.'custom_fonts'.DIRECTORY_SEPARATOR.$file.'.ttf';
                     unlink($file);
                 }
-                $inputfield->message($this->_($names));
+                $inputfield->message(sprintf($this->_('Following fonts were deleted: %s')), $names);
             }
         }
     }
