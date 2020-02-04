@@ -11,12 +11,11 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
       'autoload' => false,
       'singular' => true,
       'requires' => 'ProcessWire>=3.0.0, PHP>=7.0.0',
+      'href' => 'https://github.com/juergenweb/ImagePlaceholder',
       'icon' => 'image',
       'version' => 1
     ];
     }
-
-
 
     // __construct
     public function __construct()
@@ -27,7 +26,7 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
         $this->font_size = 14;
         $this->background_color = null;
         $this->text_color = '#666666';
-        $this->font_family = 'pacifico';
+        $this->font_family = 'arial';
         $this->text = null;
     }
 
@@ -35,56 +34,70 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
     Custom validation for input fields
     */
 
-    public function init() {
-       $this->addHookAfter("Inputfield::processInput",$this,"validateField");
-     }
+    public function init()
+    {
+        $this->addHookAfter("Inputfield::processInput", $this, "validateField");
+    }
 
-   public function validateField(HookEvent $event){
-       $inputfield = $event->object;
-       $name = $inputfield->name;
-       if(($name == 'background_color') || ($name == 'text_color')) {
-           if(!$this->validateHexadecimal($inputfield->attr("value"))){
-               $inputfield->error($this->_("Only heaxadecimal values are allowed"));
-           }
-       }
-   }
+    /*
+    Validate field values
+    */
+    public function validateField(HookEvent $event)
+    {
+        $inputfield = $event->object;
+        $name = $inputfield->name;
+        if (($name == 'background_color') || ($name == 'text_color')) {
+            if (!$this->validateHexadecimal($inputfield->attr("value"))) {
+                $inputfield->error($this->_("Only heaxadecimal values are allowed"));
+            }
+        }
+    }
 
-   private function validateHexadecimal(string $hexadecimal = null)
-   {
-     if($hexadecimal){
-       $pattern = '/#([[:xdigit:]]{3}){1,2}\b/';
-       if(preg_match($pattern, $hexadecimal, $matches)){
-         return true;
-       } else {
-         return false;
-       }
-     }
-     return true;
-   }
+    /**
+      * Check if entered color code is in hexadecimal format
+      *
+      * @param string|null hexadecimal
+      * @return bool
+    */
+
+    private function validateHexadecimal(string $hexadecimal = null)
+    {
+        if ($hexadecimal) {
+            $pattern = '/#([[:xdigit:]]{3}){1,2}\b/';
+            if (preg_match($pattern, $hexadecimal, $matches)) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
 
 
     /**
       * Helper method for sanitizing hexadecimal colors
+      * checks for correct hexadecimal color code first and change short notation to default notation (fe. #ddd to #dddddd)
       *
       * @param string|null $hexcolor
       * @return string|null
-      */
+    */
 
     private function sanitizeHex(string $hexcolor = null)
     {
         if ($hexcolor) {
             $color = trim($hexcolor);
-            $color = preg_replace('/[^a-zA-Z0-9#]/', '', $color); //only allow letters, numbers and #
-            //check for short notation of hex code
-            $prefix = (substr($color, 0, 1) !== '#') ? '#' : '';
-            $color = substr($prefix.$color, 0, 7);
-            if (strlen($color) < 7) {
-                //get the last letter in string and repeat it until string consists of
-                $number = strlen($color);
-                $lastLetter = substr($color, -1);
-                $color = str_pad($color, 7, $lastLetter);
+            if ($this->validateHexadecimal($color)) {
+                $color = substr($color, 0, 7);
+                if (strlen($color) < 7) {
+                    //get the last letter in string and repeat it until string consists of
+                    $number = strlen($color);
+                    $lastLetter = substr($color, -1);
+                    $color = str_pad($color, 7, $lastLetter);
+                }
+                return $color;
+            } else {
+                throw new \Exception($this->_("Only heaxadecimal values are allowed"));
             }
-            return $color;
         }
     }
 
@@ -95,7 +108,7 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
       *
       * @param string width  (fe 400); required value
       * @return string|null
-      */
+    */
 
     public function setWidth(int $width): self
     {
@@ -109,7 +122,7 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
      * Get the width of the placeholder image
      *
      * @return string|null
-     */
+    */
 
     public function getWidth()
     {
@@ -121,7 +134,8 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
      *
      * @param string|null height  (fe 300)
      * @return string|null
-     */
+    */
+
     public function setHeight(int $height = null): self
     {
         if ($height > 0) {
@@ -134,13 +148,20 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
      * Get the height of the placeholder image
      *
      * @return string|null
-     */
+    */
+
     public function getHeight()
     {
         return $this->height;
     }
 
-    // Set and get background color
+    /**
+      * Set the background color of the placeholder image
+      *
+      * @param string|null backgroundColor
+      * @return string|null
+    */
+
     public function setBackgroundColor(string $backgroundColor = null): self
     {
         if ($backgroundColor) {
@@ -149,12 +170,24 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
         return $this;
     }
 
+    /**
+     * Get the background color of the placeholder image
+     *
+     * @return string|null
+    */
+
     public function getBackgroundColor()
     {
         return $this->background_color;
     }
 
-    // Set and get text color
+    /**
+      * Set the text color of the placeholder image
+      *
+      * @param string|null textColor
+      * @return string|null
+    */
+
     public function setTextColor(string $textColor = null): self
     {
         if ($textColor) {
@@ -163,12 +196,24 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
         return $this;
     }
 
+    /**
+     * Get the text color of the placeholder image
+     *
+     * @return string|null
+    */
+
     public function getTextColor()
     {
         return $this->text_color;
     }
 
-    // Set and get text
+    /**
+      * Set the text of the placeholder image
+      *
+      * @param string|null text
+      * @return string|null
+    */
+
     public function setText(string $text = null): self
     {
         if ($text) {
@@ -177,10 +222,22 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
         return $this;
     }
 
+    /**
+     * Get the text of the placeholder image
+     *
+     * @return string|null
+    */
+
     public function getText()
     {
         return $this->text;
     }
+
+    /**
+      * Get the default text of the placeholder image - needed for multilanguage value
+      *
+      * @return string|null
+    */
 
     public function getDefaultText()
     {
@@ -197,7 +254,13 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
         }
     }
 
-    // Set and get fontsize
+    /**
+      * Set the font size for the placeholder text
+      *
+      * @param int|null font
+      * @return int|null
+    */
+
     public function setFontSize(int $fontsize = null): self
     {
         if ($fontsize > 0) {
@@ -206,12 +269,24 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
         return $this;
     }
 
+    /**
+      * Get the default fontsize of the placeholder text
+      *
+      * @return int|null
+    */
+
     public function getFontSize()
     {
         return $this->font_size;
     }
 
-    // Set and get font family
+    /**
+      * Set the font family for the placeholder text
+      *
+      * @param string|null font
+      * @return string|null
+    */
+
     public function setFontFamily(string $fontfamily = null): self
     {
         if ($fontfamily) {
@@ -224,11 +299,22 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
         return $this;
     }
 
+    /**
+      * Get the default font family of the placeholder text
+      *
+      * @return string|null
+    */
+
     public function getFontFamily()
     {
         return $this->font_family;
     }
 
+    /**
+      * Security method to check if file is in format true type font
+      *
+      * @return bool
+    */
 
     private function checkFileExt(string $pathToFile = null)
     {
@@ -238,6 +324,12 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
         }
         return false;
     }
+
+    /**
+      * Get all files in the format of ttf in a given directory
+      *
+      * @return array
+    */
 
     private function getAllFontFilesInDir(string $pathToDir = null): array
     {
@@ -256,12 +348,24 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
         }
     }
 
-    public function getAllFontFiles(): array
+    /**
+      * Get all ttf files in the fonts and custom_fonts folders
+      *
+      * @return array
+    */
+
+    private function getAllFontFiles(): array
     {
         $defaultFontFiles = $this->getAllFontFilesInDir(dirname(__FILE__) . DIRECTORY_SEPARATOR.'fonts'.DIRECTORY_SEPARATOR);
         $customFontFiles = $this->getAllFontFilesInDir(dirname(__FILE__) . DIRECTORY_SEPARATOR.'custom_fonts'.DIRECTORY_SEPARATOR);
         return array_merge($defaultFontFiles, $customFontFiles);
     }
+
+    /**
+      * Create an array of all ttf files for the select $selectOptions (['font-file-name' => 'font name'])
+      *
+      * @return array
+    */
 
     private function createFontFamilySelect()
     {
@@ -272,10 +376,15 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
         return $selectOptions;
     }
 
+    /**
+      * Render the img src or a complete image tag
+      *
+      * @param bool tag  true = render a complete tag, false = render only the src (default)
+      * @return array
+    */
 
     public function render(bool $tag = false)
     {
-
         if (empty($this->getHeight())) {
             $this->setHeight($this->getWidth());
         } // make squared image
@@ -304,7 +413,6 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
         } else {
             $dir = 'custom_fonts';
         }
-
 
         $fontFile = dirname(__FILE__) . DIRECTORY_SEPARATOR.$dir.DIRECTORY_SEPARATOR.$this->getFontFamily().'.ttf';
         if (file_exists($fontFile)) {
@@ -346,32 +454,6 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
         return $html;
     }
 
-
-    private static function staticRender($width = null, $height = null, $background_color = null, $text_color = null, $fontfamily = null, $fontsize = null, $text = null, $tag = true)
-    {
-        $imagetag = new self($tag);
-        return $imagetag->setWidth($width)
-              ->setHeight($height)
-              ->setBackgroundColor($background_color)
-              ->setTextColor($text_color)
-              ->setFontFamily($fontfamily)
-              ->setFontSize($fontsize)
-              ->setText($text)
-              ->render();
-    }
-
-    public static function srcAttribute($width = null, $height = null, $background_color = null, $text_color = null, $fontfamily = null, $fontsize = null, $text = null)
-    {
-        return self::staticRender($width, $height, $background_color, $text_color, $fontfamily, $fontsize, $text, $tag = false);
-    }
-
-    //echo \Placeholder\Placeholder::imagetag(300, 300, null, null, null, null, 'Placeholder');
-    public static function imageTag($width = null, $height = null, $background_color = null, $text_color = null, $fontfamily = null, $fontsize = null, $text = null)
-    {
-        return self::staticRender($width, $height, $background_color, $text_color, $fontfamily, $fontsize, $text, $tag = true);
-    }
-
-
     public function ___install()
     {
         if (extension_loaded('gd') && function_exists('gd_info')) {
@@ -385,7 +467,8 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
      * Config inputfields
      *
      * @param InputfieldWrapper $inputfields
-     */
+    */
+
     public function getModuleConfigInputfields($inputfields)
     {
         $modules = $this->wire('modules');
@@ -454,7 +537,7 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
         $f->description = $this->_('Only true type font files are allowed');
         $f->name = $f_name;
         $f->icon = 'folder-plus';
-        $f->extensions = 'ttf, TTF';
+        $f->extensions = 'ttf';
         $f->maxFiles = 1;
         $f->descriptionRows = 0;
         $f->destinationPath = $this->wire('config')->paths->$this . 'custom_fonts/';
