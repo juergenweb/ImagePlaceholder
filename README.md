@@ -23,13 +23,17 @@ Use this methods to overwrite default values from the module configuration.
 
 ## Examples for usage in templates
 
-Usage with default values (only the size will be set manually)
+###Usage with default values (only the size will be set manually)
 
 `echo $modules->ImagePlaceholder->setWidth(800)->setHeight(400)->render();`
 
-Usage with all parameters set individually (default values will be overwritten)
+This will output the img src as base64 string.
 
-`echo $modules->ImagePlaceholder->setFontSize(30)->setWidth(800)->setHeight(400)->setBackgroundColor('#dddddd')->setTextColor('#000000')->setText('My placeholder')->setFontFamily('pacifico')->render();`
+###Usage with all parameters set individually (default values will be overwritten)
+
+`echo $modules->ImagePlaceholder->setFontSize(30)->setWidth(800)->setHeight(400)->setBackgroundColor('#dddddd')->setTextColor('#000000')->setText('My placeholder')->setFontFamily('pacifico')->render(true);`
+
+Take a look at the render method, which includes true as a boolean value. This means that a complete image tag will be rendered instead of only the src value.
 
 
 
