@@ -36,6 +36,10 @@ This will output the img src as base64 string.
 
 Take a look at the render method, which includes true as a boolean value. This means that a complete image tag will be rendered instead of only the src value.
 
+## Multilanguage
+
+The text for the placeholder can be set multilingual (in module configuration and via setText() method). By setting the text via setText() method in template, please use translateable strings(_('My text')) for multilanguage text.
+
 
 
 
