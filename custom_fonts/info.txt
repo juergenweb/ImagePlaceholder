@@ -1,1 +1,2 @@
 
+This folder is for uploading your own custom fonts and will not get overwritten during an update.
