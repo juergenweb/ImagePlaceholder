@@ -51,7 +51,21 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
                 $inputfield->error($this->_("Only heaxadecimal values are allowed"));
             }
         }
+        if ($name == 'delete_font') {
+            if ($inputfield->attr("value")) {
+                $values = $inputfield->attr("value");
+                $names = ucwords(implode(', ', $values));
+                //delete the selected font files in custom_fonts directory
+                foreach ($values as $file) {
+                    $file = dirname(__FILE__) . DIRECTORY_SEPARATOR.'custom_fonts'.DIRECTORY_SEPARATOR.$file.'.ttf';
+                    unlink($file);
+                }
+                $inputfield->message($this->_($names));
+            }
+        }
     }
+
+
 
     /**
       * Check if entered color code is in hexadecimal format
@@ -377,6 +391,22 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
     }
 
     /**
+      * Create an array of all ttf files for the select $selectOptions (['font-file-name' => 'font name'])
+      *
+      * @return array
+    */
+
+    private function createFontFamilyDelete()
+    {
+        $customFontFiles = $this->getAllFontFilesInDir(dirname(__FILE__) . DIRECTORY_SEPARATOR.'custom_fonts'.DIRECTORY_SEPARATOR);
+        $selectOptions = [];
+        foreach ($customFontFiles as $v) {
+            $selectOptions[$v] = ucwords($v);
+        }
+        return $selectOptions;
+    }
+
+    /**
       * Render the img src or a complete image tag
       *
       * @param bool tag  true = render a complete tag, false = render only the src (default)
@@ -418,11 +448,8 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
         if (file_exists($fontFile)) {
             if (($this->getText()) || ($this->getDefaultText())) {
 
-            //set custom text or fallback to default text if present
+                //set custom text or fallback to default text if present
                 $text = ($this->getText()) ? $this->getText() : $this->getDefaultText();
-                //$fontSize = ($this->getFontSize()) ? $this->getFontSize() : $this->getDefaultFontSize();
-
-                //$fontsize = ($this->getFontSize()) ? $this->getFontSize() : $this->getDefaultSize();
 
                 // get the the coordinates for width and height of the text in pixel
                 $coordinates = imagettfbbox($this->getFontSize(), 0, $fontFile, $text);
@@ -472,9 +499,6 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
     public function getModuleConfigInputfields($inputfields)
     {
         $modules = $this->wire('modules');
-
-        //add script
-        //$this->wire('config')->scripts->add($this->wire('config')->urls->ImagePlaceholder . 'placeholder.js');
 
         /* @var InputfieldText $f */
         $f = $modules->InputfieldText;
@@ -541,6 +565,18 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
         $f->maxFiles = 1;
         $f->descriptionRows = 0;
         $f->destinationPath = $this->wire('config')->paths->$this . 'custom_fonts/';
+        $inputfields->add($f);
+
+        $f = $modules->InputfieldSelectMultiple;
+        $f_name = 'delete_font';
+        $f->name = $f_name;
+        $f->id = $f_name;
+        $f->label = $this->_('Delete fonts');
+        $f->value = $this->$f_name;
+        $f->description = $this->_('Please select the fonts you want to delete (multiple values are allowed).');
+        $f->notes = $this->_('Hold STRG while selecting multiple fonts. Only uploaded font files can be deleted. Default font files will stay untouched.');
+        $f->options = $this->createFontFamilyDelete();
+        $f->collapsed = true;
         $inputfields->add($f);
 
         return $inputfields;
