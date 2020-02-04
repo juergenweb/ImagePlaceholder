@@ -9,6 +9,7 @@ Processwire module for easy creation of placeholder images on the frontend. Uses
 - Set the default fontsize
 
 Additional font files in true type format (ttf) can be uploaded via an upload field.
+Font files which are not longer needed can be selected and deleted.
 
 ## Methods
 - setTextColor(string) 
