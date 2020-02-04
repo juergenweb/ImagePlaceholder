@@ -24,7 +24,7 @@ Use these methods to overwrite default values from the module configuration.
 
 ## Examples for usage in templates
 
-### Usage with default values (only the size will be set manually)
+### Usage with default values from the module configuration (only the size of the image will be set manually)
 
 `echo $modules->ImagePlaceholder->setWidth(800)->setHeight(400)->render();`
 
