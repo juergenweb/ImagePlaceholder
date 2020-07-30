@@ -311,7 +311,7 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
         if ($fontsize > 0) {
             $this->font_size = $fontsize;
         }
-
+        return $this;
     }
 
     /**
