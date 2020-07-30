@@ -22,7 +22,7 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
     {
         parent::__construct();
         $this->width = 150;
-        $this->height = null;
+        $this->height = 150;
         $this->font_size = 14;
         $this->background_color = null;
         $this->text_color = '#666666';
@@ -45,10 +45,17 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
     public function validateField(HookEvent $event)
     {
         $inputfield = $event->object;
+        $inputValue = $event->arguments(0);
+
         $name = $inputfield->name;
+
         if (($name == 'background_color') || ($name == 'text_color')) {
             if (!$this->validateHexadecimal($inputfield->attr("value"))) {
                 $inputfield->error($this->_("Only heaxadecimal values are allowed"));
+            } else {
+              //sanatize the value and populate it back to the inputfield
+              $sanitizedValue = $this->sanitizeHex($inputfield->attr("value"));
+              $inputfield->value = $sanitizedValue;
             }
         }
         if ($name == 'delete_font') {
@@ -68,7 +75,7 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
 
 
     /**
-      * Check if entered color code is in hexadecimal format
+      * Check if entered color code is in hexadecimal format (# as first letter)
       *
       * @param string|null hexadecimal
       * @return bool
@@ -77,12 +84,13 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
     private function validateHexadecimal(string $hexadecimal = null)
     {
         if ($hexadecimal) {
-            $pattern = '/#([[:xdigit:]]{3}){1,2}\b/';
-            if (preg_match($pattern, $hexadecimal, $matches)) {
-                return true;
-            } else {
-                return false;
+          if(substr($hexadecimal, 0, 1) === '#') {
+            if (ctype_alnum(substr($hexadecimal, 1))) {
+              return true;
             }
+            return false;
+          }
+          return false;
         }
         return true;
     }
@@ -90,30 +98,46 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
 
     /**
       * Helper method for sanitizing hexadecimal colors
-      * checks for correct hexadecimal color code first and change short notation to default notation (fe. #ddd to #dddddd)
+      * checks for correct hexadecimal color code first and change short notation to default notation (fe. #f0e to #ff00ee)
       *
       * @param string|null $hexcolor
-      * @return string|null
+      * @return string
     */
 
-    private function sanitizeHex(string $hexcolor = null)
+    private function sanitizeHex(string $hexcolor = null): string
     {
-        if ($hexcolor) {
-            $color = trim($hexcolor);
-            if ($this->validateHexadecimal($color)) {
-                $color = substr($color, 0, 7);
-                if (strlen($color) < 7) {
-                    //get the last letter in string and repeat it until string consists of
-                    $number = strlen($color);
-                    $lastLetter = substr($color, -1);
-                    $color = str_pad($color, 7, $lastLetter);
-                }
-                return $color;
-            } else {
-                throw new \Exception($this->_("Only heaxadecimal values are allowed"));
-            }
+      if($hexcolor){
+        $color = trim($hexcolor);
+        if ($this->validateHexadecimal($color)) {
+          $number = strlen($color);
+          switch($number){
+            case($number === 4):
+              //shorthand syntax is used -.> so double every letter
+              $first = substr($color, -3, 1);
+              $second = substr($color, -2, 1);
+              $third = substr($color, -1);
+              $color = '#'.$first.$first.$second.$second.$third.$third;
+            break;
+            case($number<7):
+              //no shorthand syntax is used but syntax is not correct - add a fallback to generate hex color with 6 times the same letter
+              $lastLetter = substr($color, -1);
+              $color = str_pad($color, 7, $lastLetter);
+            break;
+            case($number>7):
+              $color = substr($color,0,7);
+            break;
+            default:
+          }
+          return $color;
+        } else {
+          throw new \Exception($this->_("Only heaxadecimal values are allowed. They must start with # and can only consist of letters and numbers."));
         }
+      } else {
+        return '';
+      }
     }
+
+
 
     // Set and get width
 
@@ -244,7 +268,7 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
 
     public function getText()
     {
-        return $this->text;
+      return $this->getDefaultText();
     }
 
     /**
@@ -253,20 +277,27 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
       * @return string|null
     */
 
-    public function getDefaultText()
+    public function getDefaultText(): string
     {
         //default
         $data = $this->wire('modules')->getConfig($this);
-        if ($this->wire('languages')) {
+
+        if($this->wire('languages')) {
             $userLanguage = $this->wire('user')->language;
             $lang = $userLanguage->isDefault() ? '' : "__$userLanguage->id";
-        } else {
-            $lang = '';
+            $text = $data['text'.$lang];
+            if(!$text)
+              $text = $data['text'];
         }
-        if (isset($data['default_text'.$lang])) {
-            return ($data['default_text'.$lang]);
+        else {
+            $data['text'];
         }
+        if ($text) {
+            return $text;
+        }
+        return '';
     }
+
 
     /**
       * Set the font size for the placeholder text
@@ -280,7 +311,7 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
         if ($fontsize > 0) {
             $this->font_size = $fontsize;
         }
-        return $this;
+
     }
 
     /**
@@ -291,7 +322,9 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
 
     public function getFontSize()
     {
-        return $this->font_size;
+        if($this->font_size){
+          return $this->font_size;
+        }
     }
 
     /**
@@ -446,10 +479,11 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
 
         $fontFile = dirname(__FILE__) . DIRECTORY_SEPARATOR.$dir.DIRECTORY_SEPARATOR.$this->getFontFamily().'.ttf';
         if (file_exists($fontFile)) {
-            if (($this->getText()) || ($this->getDefaultText())) {
+            if ($this->getText()) {
 
                 //set custom text or fallback to default text if present
-                $text = ($this->getText()) ? $this->getText() : $this->getDefaultText();
+                //$text = ($this->getText()) ? $this->getText() : $this->getDefaultText();
+                $text = $this->getText();
 
                 // get the the coordinates for width and height of the text in pixel
                 $coordinates = imagettfbbox($this->getFontSize(), 0, $fontFile, $text);
@@ -499,15 +533,24 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
     public function getModuleConfigInputfields($inputfields)
     {
         $modules = $this->wire('modules');
+        $languages = $this->wire('languages');
 
         /* @var InputfieldText $f */
         $f = $modules->InputfieldText;
-        $f_name = 'default_text';
+        $f_name = 'text';
         $f->name = $f_name;
         $f->label = $this->_('Default placeholder text');
         $f->description = $this->_('Enter a default text for the placeholder image (fe Sorry, no pic). Leaving this field blank means a placeholder image without any text information.');
         $f->value = $this->$f_name;
-        $f->useLanguages = true;
+        if ($languages) {
+            $f->useLanguages = true;
+            foreach ($languages as $language) {
+                if ($language->isDefault()) {
+                    continue;
+                }
+                $f->set("value$language", (string) $this->get("timeformat$language"));
+            }
+        }
         $f->collapsed = Inputfield::collapsedBlank;
         $inputfields->add($f);
 
