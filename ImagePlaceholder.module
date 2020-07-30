@@ -22,7 +22,7 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
     {
         parent::__construct();
         $this->width = 150;
-        $this->height = 150;
+        $this->height = null;
         $this->font_size = 14;
         $this->background_color = null;
         $this->text_color = '#666666';
