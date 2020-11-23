@@ -27,7 +27,7 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
         $this->background_color = null;
         $this->text_color = '#666666';
         $this->font_family = 'arial';
-        $this->text = null;
+        $this->text = '';
     }
 
     /*
@@ -252,11 +252,9 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
       * @return string|null
     */
 
-    public function setText(string $text = null): self
+    public function setText(string $text): self
     {
-        if ($text) {
-            $this->text = trim($text);
-        }
+        $this->text = trim($text);
         return $this;
     }
 
@@ -268,7 +266,7 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
 
     public function getText()
     {
-      return $this->getDefaultText();
+      return $this->text;
     }
 
     /**
@@ -448,6 +446,8 @@ class ImagePlaceholder extends WireData implements Module, ConfigurableModule
 
     public function render(bool $tag = false)
     {
+
+
         if (empty($this->getHeight())) {
             $this->setHeight($this->getWidth());
         } // make squared image
